@@ -10,13 +10,10 @@ from __future__ import annotations
 from typing import Optional
 
 from ufo.config.config import Config
-from ufo.agents.processors.app_agent_action_seq_processor import (
-    AppAgentActionSequenceProcessor,
-)
 from ufo.simple_app_agent_processor import SimpleAppAgentProcessor
 from ufo.automator import puppeteer
 from ufo.simple_context import SimpleContext
-from ufo.prompter.agent_prompter import AppAgentPrompter
+from ufo.simple_app_prompter import SimpleAppPrompter
 
 configs = Config.get_instance().config_data
 
@@ -33,10 +30,8 @@ class SimpleAppAgent:
         process_name: str,
         app_root_name: str,
         request: str = "",
-        is_visual: Optional[bool] = None,
+        is_visual: bool = False,
         main_prompt: Optional[str] = None,
-        example_prompt: Optional[str] = None,
-        api_prompt: Optional[str] = None,
         mode: str = "normal",
     ) -> None:
         self.name = f"SimpleAppAgent/{app_root_name}/{process_name}"
@@ -45,22 +40,9 @@ class SimpleAppAgent:
         self.mode = mode
         self.request = request
 
-        if is_visual is None:
-            is_visual = configs["APP_AGENT"]["VISUAL_MODE"]
         if main_prompt is None:
             main_prompt = configs["APPAGENT_PROMPT"]
-        if example_prompt is None:
-            example_prompt = (
-                configs["APPAGENT_EXAMPLE_PROMPT_AS"]
-                if configs.get("ACTION_SEQUENCE", False)
-                else configs["APPAGENT_EXAMPLE_PROMPT"]
-            )
-        if api_prompt is None:
-            api_prompt = configs["API_PROMPT"]
-
-        self.prompter = AppAgentPrompter(
-            is_visual, main_prompt, example_prompt, api_prompt, app_root_name
-        )
+        self.prompter = SimpleAppPrompter(main_prompt, is_visual)
         self.Puppeteer = puppeteer.AppPuppeteer(process_name, app_root_name)
 
         self.status = CONTINUE
@@ -80,23 +62,59 @@ class SimpleAppAgent:
         cls, process_name: str, app_root_name: str, request: str = "", mode: str = "normal"
     ) -> "SimpleAppAgent":
         """Create the agent using values from the global configuration."""
-        return cls(process_name, app_root_name, request, mode=mode)
+        return cls(
+            process_name,
+            app_root_name,
+            request,
+            is_visual=configs.get("APP_AGENT", {}).get("VISUAL_MODE", False),
+            main_prompt=configs.get("APPAGENT_PROMPT"),
+            mode=mode,
+        )
 
     def context_provision(self, request: str = "") -> None:
         """Initialize any retrievers based on configuration."""
         _ = request  # kept for API compatibility
         # Simplified agent does not load additional retrievers.
 
+    def message_constructor(
+        self,
+        dynamic_examples: list[str],
+        dynamic_knowledge: list[str],
+        image_list: list[str],
+        control_info: str,
+        plan: list[str],
+        request: str,
+        subtask: str,
+        current_application: str,
+        blackboard_prompt: list | str,
+        last_success_actions: list,
+        include_last_screenshot: bool,
+    ) -> list[dict]:
+        """Construct the prompt message using :class:`SimpleAppPrompter`."""
+
+        system = self.prompter.system_prompt_construction(dynamic_examples)
+        user_content = self.prompter.user_content_construction(
+            image_list=image_list,
+            control_item=control_info,
+            prev_subtask=[],
+            prev_plan=plan,
+            user_request=request,
+            subtask=subtask,
+            current_application=current_application,
+            host_message=[],
+            retrieved_docs="\n".join(dynamic_knowledge),
+            last_success_actions=last_success_actions,
+            include_last_screenshot=include_last_screenshot,
+        )
+
+        if blackboard_prompt:
+            user_content = blackboard_prompt + user_content
+
+        return self.prompter.prompt_construction(system, user_content)
+
     def process(self, context: SimpleContext) -> None:
         """Run one processing step using the standard processor."""
-        if configs.get("ACTION_SEQUENCE", False):
-            self.processor = AppAgentActionSequenceProcessor(
-                agent=self, context=context
-            )
-        else:
-            self.processor = SimpleAppAgentProcessor(
-                agent=self, context=context
-            )
+        self.processor = SimpleAppAgentProcessor(agent=self, context=context)
         self.processor.process()
         self.status = self.processor.status
         self.step += 1
