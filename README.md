@@ -175,6 +175,29 @@ Alternatively, you can also directly invoke UFO with a specific task and request
 python -m ufo --task <your_task_name> -r "<your_request>"
 ```
 
+For a minimal workflow that skips the HostAgent and runs a single AppAgent only, use the simplified runner. It relies on ``SimpleAppAgent`` together with ``SimpleAppAgentProcessor`` – lightweight counterparts of the default classes – and automatically locates the window matching the given process or root name. ``SimpleAppAgentProcessor`` performs grounding purely via UI Automation without any vision model:
+
+```powershell
+python -m ufo.simple_appagent_runner --process <app_process> --root <app_root> --request "<your_request>"
+```
+
+To inspect the available controls of the active window without running the full workflow, the helper below spins up an AppAgent and lists all detected controls:
+
+```powershell
+python -m ufo.print_control_list --process <app_process> --root <app_root> [--click <label_or_text>]
+```
+
+For a barebone demonstration of the ground → decide → act loop, this helper runs the AppAgent for a few steps without the HostAgent. It also locates the matching window automatically:
+
+```powershell
+python -m ufo.dummy_appagent_cycle --process <app_process> --root <app_root> [--steps N]
+```
+
+These helpers rely on a few convenience utilities that you can call directly.
+`AppAgent.from_config()` creates an agent with sensible defaults from
+`config.yaml`; `SimpleContext.simple()` builds a context with loggers configured; and
+`ControlInspectorFacade.locate_window()` finds a window by process or root name.
+
 
 ###  Step 5 🎥: Execution Logs 
 

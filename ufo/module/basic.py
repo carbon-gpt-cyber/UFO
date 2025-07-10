@@ -781,3 +781,15 @@ class BaseSession(ABC):
         logger.setLevel(configs["LOG_LEVEL"])
 
         return logger
+
+    @staticmethod
+    def setup_basic_loggers(
+        log_dir: str,
+    ) -> tuple[logging.Logger, logging.Logger, logging.Logger]:
+        """Create the common request, response and evaluation loggers."""
+
+        os.makedirs(log_dir, exist_ok=True)
+        logger = BaseSession.initialize_logger(log_dir, "response.log")
+        request_logger = BaseSession.initialize_logger(log_dir, "request.log")
+        eval_logger = BaseSession.initialize_logger(log_dir, "evaluation.log")
+        return logger, request_logger, eval_logger

@@ -547,6 +547,21 @@ class ControlInspectorFacade:
         )
         return desktop_windows_dict
 
+    def locate_window(self, process_name: str, app_root_name: str) -> UIAWrapper:
+        """Return the first top-level window whose title matches the names."""
+
+        windows = self.get_desktop_app_dict(remove_empty=True)
+        proc = process_name.lower()
+        root = app_root_name.lower()
+        for window in windows.values():
+            title = window.element_info.name.lower()
+            if proc in title or root in title:
+                return window
+        available = ", ".join(w.element_info.name for w in windows.values())
+        raise RuntimeError(
+            f"Application window matching '{process_name}' or '{app_root_name}' not found. Available windows: {available}"
+        )
+
     def get_desktop_app_info(
         self,
         desktop_windows_dict: Dict[str, UIAWrapper],
