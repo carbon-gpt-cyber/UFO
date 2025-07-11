@@ -198,6 +198,35 @@ These helpers rely on a few convenience utilities that you can call directly.
 `config.yaml`; `SimpleContext.simple()` builds a context with loggers configured; and
 `ControlInspectorFacade.locate_window()` finds a window by process or root name.
 
+### Minimal code example
+
+If you want to embed the AppAgent in your own script, the
+`examples/minimal_appagent.py` file shows the smallest setup:
+
+```python
+from ufo.simple_app_agent import SimpleAppAgent
+from ufo.simple_context import SimpleContext, APPLICATION_WINDOW
+from ufo.automator.ui_control.inspector import ControlInspectorFacade
+
+agent = SimpleAppAgent.from_config("notepad", "Notepad", "type hello")
+context = SimpleContext.simple("notepad", "Notepad", "type hello")
+context.set(
+    APPLICATION_WINDOW,
+    ControlInspectorFacade().locate_window("notepad", "Notepad"),
+)
+
+while not agent.is_finished:
+    agent.process(context)
+```
+
+Run it with:
+
+```powershell
+python examples/minimal_appagent.py --process notepad --root Notepad --request "type hello"
+```
+
+This example relies solely on UI Automation without the HostAgent or visual model.
+
 
 ###  Step 5 🎥: Execution Logs 
 
