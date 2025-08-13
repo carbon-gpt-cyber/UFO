@@ -88,6 +88,40 @@ class AppAgent(BasicAgent):
 
         self.set_state(self.default_state)
 
+    @classmethod
+    def from_config(
+        cls,
+        process_name: str,
+        app_root_name: str,
+        request: str = "",
+        mode: str = "normal",
+    ) -> "AppAgent":
+        """Create an :class:`AppAgent` using the global configuration."""
+
+        if configs.get("ACTION_SEQUENCE", False):
+            example_prompt = configs["APPAGENT_EXAMPLE_PROMPT_AS"]
+        else:
+            example_prompt = configs["APPAGENT_EXAMPLE_PROMPT"]
+
+        agent = cls(
+            name=f"AppAgent/{app_root_name}/{process_name}",
+            process_name=process_name,
+            app_root_name=app_root_name,
+            is_visual=configs["APP_AGENT"]["VISUAL_MODE"],
+            main_prompt=configs["APPAGENT_PROMPT"],
+            example_prompt=example_prompt,
+            api_prompt=configs["API_PROMPT"],
+            mode=mode,
+        )
+
+        if configs.get("USE_APIS", False):
+            agent.Puppeteer.receiver_manager.create_api_receiver(
+                app_root_name, process_name
+            )
+
+        agent.context_provision(request)
+        return agent
+
     def get_prompter(
         self,
         is_visual: bool,

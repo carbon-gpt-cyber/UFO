@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from enum import Enum
+"""AppAgent state definitions without Enum based statuses."""
+
 from typing import TYPE_CHECKING, Dict, Optional, Type
 
 from ufo.agents.agent.basic import BasicAgent
@@ -26,18 +27,32 @@ if TYPE_CHECKING:
 configs = Config.get_instance().config_data
 
 
-class AppAgentStatus(Enum):
-    """
-    Store the status of the app agent.
-    """
+class _Status(str):
+    """Tiny helper so constants expose a ``value`` attribute like Enum members."""
 
-    ERROR = "ERROR"
-    FINISH = "FINISH"
-    CONTINUE = "CONTINUE"
-    FAIL = "FAIL"
-    PENDING = "PENDING"
-    CONFIRM = "CONFIRM"
-    SCREENSHOT = "SCREENSHOT"
+    @property
+    def value(self) -> str:  # pragma: no cover - simple shim
+        return str(self)
+
+
+class AppAgentStatus:
+    """Lightweight namespace storing app agent status strings."""
+
+    ERROR = _Status("ERROR")
+    FINISH = _Status("FINISH")
+    CONTINUE = _Status("CONTINUE")
+    FAIL = _Status("FAIL")
+    PENDING = _Status("PENDING")
+    CONFIRM = _Status("CONFIRM")
+    SCREENSHOT = _Status("SCREENSHOT")
+
+    TERMINAL_STATES = {FINISH, ERROR}
+
+    @staticmethod
+    def is_terminal(status: str) -> bool:
+        if hasattr(status, "value"):
+            status = status.value
+        return status in {AppAgentStatus.FINISH.value, AppAgentStatus.ERROR.value}
 
 
 class AppAgentStateManager(AgentStateManager):
@@ -175,7 +190,7 @@ class FinishAppAgentState(AppAgentState):
         The class name of the state.
         :return: The name of the state.
         """
-        return AppAgentStatus.FINISH.value
+        return AppAgentStatus.FINISH
 
 
 @AppAgentStateManager.register
@@ -205,7 +220,7 @@ class ContinueAppAgentState(AppAgentState):
         The class name of the state.
         :return: The name of the state.
         """
-        return AppAgentStatus.CONTINUE.value
+        return AppAgentStatus.CONTINUE
 
 
 @AppAgentStateManager.register
@@ -220,7 +235,7 @@ class ScreenshotAppAgentState(ContinueAppAgentState):
         The class name of the state.
         :return: The name of the state.
         """
-        return AppAgentStatus.SCREENSHOT.value
+        return AppAgentStatus.SCREENSHOT
 
     def next_state(self, agent: BasicAgent) -> AgentState:
 
@@ -228,13 +243,13 @@ class ScreenshotAppAgentState(ContinueAppAgentState):
 
         if agent_processor is None:
 
-            agent.status = AppAgentStatus.CONTINUE.value
+            agent.status = AppAgentStatus.CONTINUE
             return ContinueAppAgentState()
 
         control_reannotate = agent_processor.control_reannotate
 
         if control_reannotate is None or len(control_reannotate) == 0:
-            agent.status = AppAgentStatus.CONTINUE.value
+            agent.status = AppAgentStatus.CONTINUE
             return ContinueAppAgentState()
         else:
             return super().next_state(agent)
@@ -269,7 +284,7 @@ class PendingAppAgentState(AppAgentState):
         :param agent: The agent for the current step.
         :return: The state for the next step.
         """
-        agent.status = AppAgentStatus.CONTINUE.value
+        agent.status = AppAgentStatus.CONTINUE
         return ContinueAppAgentState()
 
     def is_subtask_end(self) -> bool:
@@ -285,7 +300,7 @@ class PendingAppAgentState(AppAgentState):
         The class name of the state.
         :return: The name of the state.
         """
-        return AppAgentStatus.PENDING.value
+        return AppAgentStatus.PENDING
 
 
 @AppAgentStateManager.register
@@ -330,15 +345,15 @@ class ConfirmAppAgentState(AppAgentState):
 
         # If the plan is not empty and the plan contains the finish status, it means the task is finished.
         # The next state should be FinishAppAgentState.
-        if len(plan) > 0 and AppAgentStatus.FINISH.value in plan[0]:
-            agent.status = AppAgentStatus.FINISH.value
+        if len(plan) > 0 and AppAgentStatus.FINISH in plan[0]:
+            agent.status = AppAgentStatus.FINISH
             return FinishAppAgentState()
 
         if self._confirm:
-            agent.status = AppAgentStatus.CONTINUE.value
+            agent.status = AppAgentStatus.CONTINUE
             return ContinueAppAgentState()
         else:
-            agent.status = AppAgentStatus.FINISH.value
+            agent.status = AppAgentStatus.FINISH
             return FinishHostAgentState()
 
     def is_subtask_end(self) -> bool:
@@ -354,7 +369,7 @@ class ConfirmAppAgentState(AppAgentState):
         The class name of the state.
         :return: The name of the state.
         """
-        return AppAgentStatus.CONFIRM.value
+        return AppAgentStatus.CONFIRM
 
 
 @AppAgentStateManager.register
@@ -408,7 +423,7 @@ class ErrorAppAgentState(AppAgentState):
         The class name of the state.
         :return: The name of the state.
         """
-        return AppAgentStatus.ERROR.value
+        return AppAgentStatus.ERROR
 
 
 @AppAgentStateManager.register
@@ -462,7 +477,7 @@ class FailAppAgentState(AppAgentState):
         The class name of the state.
         :return: The name of the state.
         """
-        return AppAgentStatus.FAIL.value
+        return AppAgentStatus.FAIL
 
 
 @AppAgentStateManager.register

@@ -3,6 +3,7 @@
 
 from collections import defaultdict
 from dataclasses import dataclass, field
+import os
 from enum import Enum
 from logging import Logger
 from typing import Any, Dict, List, Optional, Type, Union
@@ -49,6 +50,7 @@ class ContextNames(Enum):
         "CURRENT_ROUND_SUBTASK_AMOUNT"  # The amount of subtasks in the current round
     )
     STRUCTURAL_LOGS = "STRUCTURAL_LOGS"  # The structural logs of the session
+    MEMORY = "MEMORY"  # Store simplified memory items
 
     @property
     def default_value(self) -> Any:
@@ -87,6 +89,7 @@ class ContextNames(Enum):
             self == ContextNames.CONTROL_REANNOTATION
             or self == ContextNames.HOST_MESSAGE
             or self == ContextNames.PREVIOUS_SUBTASKS
+            or self == ContextNames.MEMORY
         ):
             return []
         elif (
@@ -140,6 +143,7 @@ class ContextNames(Enum):
             self == ContextNames.CONTROL_REANNOTATION
             or self == ContextNames.HOST_MESSAGE
             or self == ContextNames.PREVIOUS_SUBTASKS
+            or self == ContextNames.MEMORY
         ):
             return list
         elif (
@@ -348,3 +352,33 @@ class Context:
 
         # Sync the current round step and cost
         self._sync_round_values()
+
+    @classmethod
+    def simple(
+        cls,
+        process_name: str,
+        app_root_name: str,
+        request: str = "",
+        log_dir: str | None = None,
+    ) -> "Context":
+        """Return a basic context with loggers and process info pre-populated."""
+
+        context = cls()
+
+        if log_dir is not None:
+            from ufo.module.basic import BaseSession
+
+            os.makedirs(log_dir, exist_ok=True)
+            logger, req_logger, eval_logger = BaseSession.setup_basic_loggers(
+                log_dir
+            )
+            context.set(ContextNames.LOG_PATH, os.path.join(log_dir, ""))
+            context.set(ContextNames.LOGGER, logger)
+            context.set(ContextNames.REQUEST_LOGGER, req_logger)
+            context.set(ContextNames.EVALUATION_LOGGER, eval_logger)
+
+        context.set(ContextNames.APPLICATION_PROCESS_NAME, process_name)
+        context.set(ContextNames.APPLICATION_ROOT_NAME, app_root_name)
+        context.set(ContextNames.SUBTASK, request)
+
+        return context

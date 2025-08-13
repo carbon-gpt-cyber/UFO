@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
 
 from ufo import utils
 from ufo.agents.memory.memory import Memory, MemoryItem
+from ufo.agents.memory.blackboard import Blackboard
 
 from ufo.agents.states.basic import AgentState, AgentStatus
 from ufo.automator import puppeteer
@@ -101,11 +102,18 @@ class BasicAgent(ABC):
 
     @property
     def blackboard(self) -> Blackboard:
-        """
-        Get the blackboard.
-        :return: The blackboard.
-        """
-        return self.host.blackboard
+        """Return the blackboard used for storing shared data."""
+
+        if self.host is not None:
+            return self.host.blackboard
+
+        # When running without a host, some subclasses may not have created a
+        # ``_blackboard`` attribute.  Lazily create one so helper scripts can
+        # operate a standalone agent without crashing.
+        if not hasattr(self, "_blackboard"):
+            self._blackboard = Blackboard()
+
+        return self._blackboard
 
     def create_puppeteer_interface(self) -> puppeteer.AppPuppeteer:
         """
